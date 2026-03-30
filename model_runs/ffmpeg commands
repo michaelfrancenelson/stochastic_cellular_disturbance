@@ -1,0 +1,2 @@
+ffmpeg -i ./out/img/test6_%05d.ppm -framerate 30 ../vid/test6_a.mp4
+ffmpeg -i ./out/img/1k_species_%05d.ppm -framerate 30 ./out/vid/1k_species_4500steps.mp4
