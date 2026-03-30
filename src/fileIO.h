@@ -253,9 +253,10 @@ void printDoubleVector(double *vec, int n, char *fmt)
  * @param arr The 2D array of ints to write.
  * @param nRows The number of rows of data to write in the array.
  * @param nCols The number of columns of data to write in the array.
+ * @param delim The file delimiter, usually a space or a comma.
  * @param append Whether or not to start a new file or append to the existing content in the file.
  */
-void writeIntArray(char *filename, int **arr, int nRow, int nCol, bool append)
+void writeIntArray(char *filename, int **arr, int nRow, int nCol, char* delim, bool append)
 {
     char *mode = "w";
     if (append)
@@ -273,10 +274,11 @@ void writeIntArray(char *filename, int **arr, int nRow, int nCol, bool append)
 
     for (int i = 0; i < nRow; i++)
     {
-        for (int j = 0; j < nCol; j++)
+        for (int j = 0; j < nCol - 1; j++)
         {
-            fprintf(file, "%d ", arr[i][j]);
+            fprintf(file, "%d%s", arr[i][j], delim);
         }
+        fprintf(file, "%d", arr[i][nCol - 1]);
         fprintf(file, "\n");
     }
 
@@ -288,9 +290,10 @@ void writeIntArray(char *filename, int **arr, int nRow, int nCol, bool append)
  * @param filename The name of the file to write.
  * @param arr The 2D array of ints to write.
  * @param nElements How many elements to write?
+ * @param delim The file delimiter, usually a space or a comma.
  * @param append Whether or not to start a new file or append to the existing content in the file.
  */
-void writeIntVector(char *filename, int *arr, int nElements, bool append)
+void writeIntVector(char *filename, int *arr, int nElements, char* delim, bool append)
 {
     char *mode = "w";
     if (append)
@@ -306,13 +309,51 @@ void writeIntVector(char *filename, int *arr, int nElements, bool append)
         perror(msg);
     }
 
-    for (int i = 0; i < nElements; i++)
+    for (int i = 0; i < nElements - 1; i++)
     {
-        fprintf(file, "%d ", arr[i]);
+        fprintf(file, "%d%s", arr[i], delim);
     }
+
+    fprintf(file, "%d", arr[nElements - 1]);
 
     fprintf(file, "\n");
     fclose(file);
+}
+
+
+/**
+ * @brief Write the header for the census file.
+ * @param filename The name of the file to write to
+ * @param nSpecies The number of species in the simulation.  An additional column will be added for the 'zero species', i.e. an empty cell.
+ * @param fmt The format to use for the species names/numbers.  "sp_%04d" will label species as "sp_0000", "sp_0001", etc.
+ * @param delim The delimiter.  Should be a space or a comma.
+ */
+void writeCensusHeader(char *filename, int nSpecies, char* fmt, char* delim)
+{
+    FILE *file;
+
+    file = fopen(filename, "w");
+
+    if (file == NULL | !file)
+    {
+        char *msg;
+        sprintf(msg, "writeCensusHeader(): Error opening file %s\n", filename);
+        perror(msg);
+    }
+
+    fprintf(file, "step");
+    fprintf(file, delim);
+    for (int i = 0; i < nSpecies; i++)
+    {
+        fprintf(file, fmt, i);
+        fprintf(file, delim);
+    }
+
+    fprintf(file, fmt, nSpecies);
+    fprintf(file, "\n");
+    fclose(file);
+
+
 }
 
 /**
@@ -320,16 +361,15 @@ void writeIntVector(char *filename, int *arr, int nElements, bool append)
  * @param filename The name of the file to write.
  * @param arr The 2D array of ints to write.
  * @param nElements How many elements to write?
- * @param append Whether or not to start a new file or append to the existing content in the file.
+ * @param timeStep The current time step of the model.
+ * @param delim The file delimiter, usually a space or a comma.
  */
-void writeCensusLine(char *filename, int *arr, int nElements, int timeStep, bool append)
+void writeCensusLine(char *filename, int *arr, int nElements, int timeStep, char* delim)
 {
-    char *mode = "w";
-    if (append)
-        mode = "a";
+
     FILE *file;
 
-    file = fopen(filename, mode);
+    file = fopen(filename, "a");
 
     if (file == NULL | !file)
     {
@@ -338,26 +378,26 @@ void writeCensusLine(char *filename, int *arr, int nElements, int timeStep, bool
         perror(msg);
     }
 
-    fprintf(file, "%d ", timeStep);
+    fprintf(file, "%d%s", timeStep, delim);
     for (int i = 0; i < nElements; i++)
     {
-        fprintf(file, "%d ", arr[i]);
+        fprintf(file, "%d%s", arr[i], delim);
     }
-
-    fprintf(file, "\n");
+    fprintf(file, "%d\n", arr[nElements]);
     fclose(file);
 }
 
 /**
- * @brief Write the contents of a one layer of a32D array of ints to a text file.
+ * @brief Write the contents of a one layer of a3D array of ints to a text file.
  * @param filename The name of the file to write.
  * @param arr The 2D array of ints to write.
  * @param slice The layer of the 3D array wo write.
  * @param nRows The number of rows of data to write in the array.
  * @param nCols The number of columns of data to write in the array.
+ * @param delim The file delimiter, usually a space or a comma.
  * @param append Whether or not to start a new file or append to the existing content in the file.
  */
-void writeIntSlice(char *filename, int ***arr, int slice, int nRow, int nCol, bool append)
+void writeIntSlice(char *filename, int ***arr, int slice, int nRow, int nCol, char* delim, bool append)
 {
     char *mode = "w";
     if (append)
@@ -368,11 +408,12 @@ void writeIntSlice(char *filename, int ***arr, int slice, int nRow, int nCol, bo
 
     for (int i = 0; i < nRow; i++)
     {
-        for (int j = 0; j < nCol; j++)
+        for (int j = 0; j < nCol - 1; j++)
         {
             int k = arr[slice][i][j];
-            fprintf(file, "%d ", k);
+            fprintf(file, "%d%s", k, delim);
         }
+        fprintf(file, "%d", arr[slice][i][nCol - 1]);
         fprintf(file, "\n"); // Save a newline character at the end of each row.
     }
     fclose(file);
@@ -416,9 +457,10 @@ void writeIntSliceBinary(char *filename, int ***arr, int slice, int nRow, int nC
  * @param arr The 2D array of doubles to write.
  * @param nRows The number of rows of data to write in the array.
  * @param nCols The number of columns of data to write in the array.
+ * @param delim The file delimiter, usually a space or a comma.
  * @param append Whether or not to start a new file or append to the existing content in the file.
  */
-void writeDoubleArray(char *filename, double **arr, int nRow, int nCol, bool append)
+void writeDoubleArray(char *filename, double **arr, int nRow, int nCol, char* delim, bool append)
 {
 
     char *mode = "w";
@@ -430,10 +472,11 @@ void writeDoubleArray(char *filename, double **arr, int nRow, int nCol, bool app
 
     for (int i = 0; i < nRow; i++)
     { // Loop through the x and y coordinates of the field.
-        for (int j = 0; j < nCol; j++)
+        for (int j = 0; j < nCol - 1; j++)
         {
-            fprintf(file, "%f ", arr[i][j]); // Save the genotype in the corresponding cell, separated by a space.
+            fprintf(file, "%f%s", arr[i][j], delim);
         }
+        fprintf(file, "%f", arr[i][nCol - 1]);
         fprintf(file, "\n"); // Save a newline character at the end of each row.
     }
 

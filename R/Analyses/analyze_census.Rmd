@@ -1,0 +1,32 @@
+---
+title: "Analyze Census"
+author: "Michael F. Nelson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+require(data.table)
+require(here)
+require(ggplot2)
+```
+
+
+```{r}
+dat_5k1 = fread(here("model_runs", "out", "5k_species_census1.txt"), header = F)
+dat_5k2 = fread(here("model_runs", "out", "5k_species_census2.txt"), header = F)
+names(dat_5k1)[1] = "step"
+names(dat_5k2)[1] = "step"
+
+
+apply(dat_5k1[, -1], 1, function(x) sum(x > 0))
+dat_5k2[, n_extant := apply(dat_5k2[, -1], 1, function(x) sum(x > 0))]
+
+ggplot(dat_5k2) +
+  geom_line(aes(x = step, y = log(n_extant)))
+
+```

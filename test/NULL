@@ -16,5 +16,5 @@ saveResumeFieldFile: NULL
 outputCensusFile: ./out/test1_census_out.txt
 outputImageFile: ./out/img/test1_
 colorMapFile: NULL
-nSteps: 100
-simTimeMinutes: 0.050000
+nSteps: 10
+simTimeMinutes: 0.516667

@@ -83,6 +83,8 @@ void testFileIO()
    getDelimFileDims("./cfg/test1_colonize.txt", " ");
    getDelimFileDims("./cfg/test_data.csv", ",");
    printIntArray(readDelimIntArray("./cfg/test_data.csv", ","), 4, 5);
+
+   writeCensusHeader("./out/census_header_test.txt", 100, "sp_%05d", ",");
 }
 
 void testModel()
@@ -146,13 +148,13 @@ void testSubmodels()
 
    int nSteps = 0;
 
-   writeIntSlice(fieldFileOut, model.fieldGrid, 0, model.nRows, model.nCols, false);
+   writeIntSlice(fieldFileOut, model.fieldGrid, 0, model.nRows, model.nCols, ",", false);
 
    for (int i = 0; i < nSteps; i++)
    {
 
       step(i % 2, i, model);
-      writeIntSlice(fieldFileOut, model.fieldGrid, i % 2, model.nRows, model.nCols, true);
+      writeIntSlice(fieldFileOut, model.fieldGrid, i % 2, model.nRows, model.nCols, ",", true);
    }
 
    // disturb(model.fieldGrid, 5.2, 1, 0, model.nRows, model.nCols);
@@ -175,7 +177,7 @@ void testSimulate(int nSteps)
    int nSp = model.nSpecies;
    char ppmFilename[1000];
 
-   writeIntSlice(fieldFilenameOut, model.fieldGrid, 0, nRows, nCols, false);
+   writeIntSlice(fieldFilenameOut, model.fieldGrid, 0, nRows, nCols, ",", false);
 
    // Make a random color map:
    int **colorMap = (int **)calloc(nSp + 1, sizeof(int));
@@ -202,7 +204,7 @@ void testSimulate(int nSteps)
       printf("time step %d of %d.\n", i, nSteps);
       disturb(model.fieldGrid, model.disturbanceFootprint, 3.1, 2, slice, nRows, nCols);
       step(slice, i, model);
-      writeIntSlice(fieldFilenameOut, model.fieldGrid, i % 2, nRows, nCols, true);
+      writeIntSlice(fieldFilenameOut, model.fieldGrid, i % 2, nRows, nCols, ",", true);
    }
 }
 
@@ -270,7 +272,7 @@ void testPPM()
 void testModelRunner()
 {
    char *cfgFile = "./cfg/test1.cfg";
-   int nSteps = 100;
+   int nSteps = 10;
 
    int quiet = 1;
 
@@ -304,10 +306,11 @@ void testModelRunner()
    census(model.fieldGrid, model.popCensus, 0, nRows, nCols, nSp);
    if (quiet != 1)
       printCensus(model.popCensus, nSp);
-   writeCensusLine(saveCensusFile, model.popCensus, nSp + 1, 0, true);
+   writeCensusHeader(saveCensusFile, nSp, "sp_%04d", ",");
+   writeCensusLine(saveCensusFile, model.popCensus, nSp, 0, ",");
 
    if (strcmp(outputFieldFile, "NULL") == 1)
-      writeIntSlice(saveFieldFile, model.fieldGrid, 0, nRows, nCols, false);
+      writeIntSlice(saveFieldFile, model.fieldGrid, 0, nRows, nCols, ",", false);
 
    char imgFileName[1000];
    if (strcmp(outputImageFile, "NULL") != 0)
@@ -332,12 +335,12 @@ void testModelRunner()
          if (quiet != 1)
             printCensus(model.popCensus, nSp);
          census(model.fieldGrid, model.popCensus, sliceNext, nRows, nCols, nSp);
-         writeCensusLine(saveCensusFile, model.popCensus, nSp + 1, i, true);
+         writeCensusLine(saveCensusFile, model.popCensus, nSp, i, ",");
       }
       if (strcmp(outputFieldFile, "NULL") != 0)
          writeIntSlice(
              saveFieldFile, model.fieldGrid, sliceNext,
-             nRows, nCols, true);
+             nRows, nCols, ",", true);
       if (strcmp(outputImageFile, "NULL") != 0)
       {
          sprintf(imgFileName, "%s_%05d.ppm", outputImageFile, i);
@@ -349,7 +352,7 @@ void testModelRunner()
       writeIntSlice(
           getDictValue(model.params, "saveResumeFieldFile"),
           model.fieldGrid, slice,
-          nRows, nCols, false);
+          nRows, nCols, ",", false);
    }
 
    long int end_time = time(NULL);
@@ -383,7 +386,7 @@ int main()
    // testSimulate(200);
    // testSubmodels();
    // testRNG();
-   //    testFileIO();
+   //   testFileIO();
    //   testModel();
 
    // return 0;

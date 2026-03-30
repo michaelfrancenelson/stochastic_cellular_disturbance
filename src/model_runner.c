@@ -27,12 +27,10 @@ int main(int argc, char *argv[])
 
     if (getIntDictValue(model.params, "seed") == 0)
         initializeRS(0);
-    printf("Saving output to %s\n", saveFieldFile);
 
     int nRows = model.nRows;
     int nCols = model.nCols;
     int nSp = model.nSpecies;
-
 
     char *colorMapFile = getDictValue(model.params, "colorMapFile");
     char *outputFieldFile = getDictValue(model.params, "outputFieldFile");
@@ -41,10 +39,11 @@ int main(int argc, char *argv[])
     census(model.fieldGrid, model.popCensus, 0, nRows, nCols, nSp);
     if (quiet != 1)
         printCensus(model.popCensus, nSp);
-    writeCensusLine(saveCensusFile, model.popCensus, nSp + 1, 0, true);
+    writeCensusHeader(saveCensusFile, nSp, "sp_%04d", ",");
+    writeCensusLine(saveCensusFile, model.popCensus, nSp, 0, ",");
 
     if (strcmp(outputFieldFile, "NULL") == 1)
-        writeIntSlice(saveFieldFile, model.fieldGrid, 0, nRows, nCols, false);
+        writeIntSlice(saveFieldFile, model.fieldGrid, 0, nRows, nCols, " ", false);
 
     char imgFileName[1000];
     if (strcmp(outputImageFile, "NULL") != 0)
@@ -62,19 +61,18 @@ int main(int argc, char *argv[])
         sliceNext = (slice + 1) % 2;
         printf("time step %d of %d.\n", i, nSteps);
         step(slice, i, model);
-        printf("census interval %d\n", censusInterval);
         if ((i % censusInterval) == 0)
         {
             printf("Time step %d, censusing...", i);
             if (quiet != 1)
                 printCensus(model.popCensus, nSp);
             census(model.fieldGrid, model.popCensus, sliceNext, nRows, nCols, nSp);
-            writeCensusLine(saveCensusFile, model.popCensus, nSp + 1, i, true);
+            writeCensusLine(saveCensusFile, model.popCensus, nSp, i, ",");
         }
         if (strcmp(outputFieldFile, "NULL") != 0)
             writeIntSlice(
                 saveFieldFile, model.fieldGrid, sliceNext,
-                nRows, nCols, true);
+                nRows, nCols, ",", true);
         if (strcmp(outputImageFile, "NULL") != 0)
         {
             sprintf(imgFileName, "%s_%05d.ppm", outputImageFile, i);
@@ -86,7 +84,7 @@ int main(int argc, char *argv[])
         writeIntSlice(
             getDictValue(model.params, "saveResumeFieldFile"),
             model.fieldGrid, slice,
-            nRows, nCols, false);
+            nRows, nCols, " ", false);
     }
 
     long int end_time = time(NULL);

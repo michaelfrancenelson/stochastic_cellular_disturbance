@@ -40,7 +40,6 @@ habitat_5k_species =  matrix(0, nrow = 1000, ncol = 1000)
 write.table(habitat_5k_species, here("model_runs", "input", "5k_species_habitat.txt"), sep = " ", row.names = F, col.names = F)
 write.table(field_5k_species, here("model_runs", "input", "5k_species_field1.txt"), sep = " ", row.names = F, col.names = F)
 
-# test 5 - 100 species
 set.seed(1)
 write.table(make_death_probs(1, 5000, 0.01, 0.02), here("model_runs", "input", "5k_species_death1.txt"), sep = " ", row.names = F, col.names = F)
 write.table(make_displacement_probs(1, 5000, 0.1, 0.2), here("model_runs", "input", "5k_species_displace1.txt"), sep = " ", row.names = F, col.names = F)
