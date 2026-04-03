@@ -45,6 +45,10 @@ write.table(make_death_probs(1, 5000, 0.01, 0.02), here("model_runs", "input", "
 write.table(make_displacement_probs(1, 5000, 0.1, 0.2), here("model_runs", "input", "5k_species_displace1.txt"), sep = " ", row.names = F, col.names = F)
 write.table(make_colonize_probs(1, 5000, 0.1, 0.2), here("model_runs", "input", "5k_species_colonize1.txt"), sep = " ", row.names = F, col.names = F)
 
+write.table(make_death_probs(1, 5000, 0.03, 0.05), here("model_runs", "input", "5k_species_death2.txt"), sep = " ", row.names = F, col.names = F)
+write.table(make_displacement_probs(1, 5000, 0.2, 0.4), here("model_runs", "input", "5k_species_displace2.txt"), sep = " ", row.names = F, col.names = F)
+write.table(make_colonize_probs(1, 5000, 0.2, 0.4), here("model_runs", "input", "5k_species_colonize2.txt"), sep = " ", row.names = F, col.names = F)
+
 write.table(
   t(col2rgb(rainbow(5001))),
   here("model_runs", "input", "5k_sp_color_map_rainbow.txt"),

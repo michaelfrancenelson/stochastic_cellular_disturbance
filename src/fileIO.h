@@ -69,13 +69,14 @@ int write_ppm(const char *filename, unsigned char *data, int height, int width)
 
 /**
  * @brief Convenience function to save a layer of a cube of ints to a ppm image.
+ * @param filename The output image file
  * @param field The 3D cube of ints
  * @param colorMap A 2D array containing the mapping of species in the field to RGB values.  Rows are species ID, columns are R G and B values
  * @param slice The layer of the field to save
  * @param nRows The number of rows in the field.  This will become the number of pixels high of the image.
  * @param nCols The number of rows in the field.  This will become the number of pixels wide of the image.
  */
-void writeIntSlicePPM(const char *filename, int ***field, int **colorMap, int slice, int nRows, int nCols)
+void writeIntSlicePPM(char *filename, int ***field, int **colorMap, int slice, int nRows, int nCols)
 {
     unsigned char *fieldImage = calloc(nRows * nCols * 3, sizeof(unsigned char));
 
@@ -97,6 +98,39 @@ void writeIntSlicePPM(const char *filename, int ***field, int **colorMap, int sl
     }
     free(fieldImage);
 }
+
+/**
+ * @brief Convenience function to save a layer of a cube of ints to a ppm image.
+ * @param filename The output image file
+ * @param arr The 2D array of ints
+ * @param colorMap A 2D array containing the mapping of species in the field to RGB values.  Rows are species ID, columns are R G and B values
+ * @param nRows The number of rows in the array.  This will become the number of pixels high of the image.
+ * @param nCols The number of rows in the array.  This will become the number of pixels wide of the image.
+ */
+void writeIntArrayPPM(const char *filename, int **arr, int **colorMap, int nRows, int nCols)
+{
+    unsigned char *fieldImage = calloc(nRows * nCols * 3, sizeof(unsigned char));
+
+    for (int row = 0; row < nRows; row++)
+    {
+        for (int col = 0; col < nCols; col++)
+        {
+            int idx = (row * nCols + col) * 3;
+            fieldImage[idx] = colorMap[arr[row][col]][0];     // red
+            fieldImage[idx + 1] = colorMap[arr[row][col]][1]; // green
+            fieldImage[idx + 2] = colorMap[arr[row][col]][2]; // blue
+        }
+    }
+
+    if (!write_ppm(filename, fieldImage, nRows, nCols))
+    {
+        fprintf(stderr, "Failed to write PPM image\n");
+        free(fieldImage);
+    }
+    free(fieldImage);
+}
+
+
 
 /**
  * @brief Create a 2D array of ints and initialize all values to zero.
@@ -487,8 +521,9 @@ void writeDoubleArray(char *filename, double **arr, int nRow, int nCol, char* de
  * @brief Retrieve the dimensions of a 2D data structure in a delimted text file.
  * @param filename The file to read the dimensions of.
  * @param delim The file delimiter.
+ * @param nHeaderRows How many header rows are in the input file before the first row of data?
  */
-int *getDelimFileDims(char *filename, char *delim)
+int *getDelimFileDims(char *filename, char *delim, int nHeaderRows)
 {
     FILE *file;
 
@@ -522,7 +557,7 @@ int *getDelimFileDims(char *filename, char *delim)
     printf("Read dimensions of %s: %d rows and %d columns.\n", filename, row, col);
 
     int *out = (int *)calloc(2, sizeof(int));
-    out[0] = row;
+    out[0] = row - nHeaderRows;
     out[1] = col;
     return out;
 }
@@ -533,17 +568,17 @@ int *getDelimFileDims(char *filename, char *delim)
  * @param delim The file delimiter.
  * @return A pointer to a 2D array of ints the same dimensions as the data in the input file.
  */
-double **readDelimDoubleArray(char *filename, char *delim)
+double **readDelimDoubleArray(char *filename, char *delim, int nHeaderRows)
 {
     // Get the dimensions
-    int *dims = getDelimFileDims(filename, delim);
+    int *dims = getDelimFileDims(filename, delim, nHeaderRows);
 
     // Allocate the blank array
     double **mat = blankDoubleArray(dims[0], dims[1]);
 
     FILE *file;
 
-    printf("Attempting to read %d rows and %d columns of double data from file %s.\n", dims[0], dims[1], filename);
+    printf("Attempting to read %d rows and %d columns of double data from file %s.\n", dims[0] - nHeaderRows, dims[1], filename);
     free(dims);
 
     file = fopen(filename, "r");
@@ -558,6 +593,12 @@ double **readDelimDoubleArray(char *filename, char *delim)
     int col = 0;
 
     char buf[MAX_LINE_LENGTH];
+
+    // Skip the header lines
+    for (int i = 0; i < nHeaderRows;i++) 
+    {
+        fgets(buf, MAX_LINE_LENGTH, file);
+    } 
 
     while (fgets(buf, MAX_LINE_LENGTH, file))
     {
@@ -584,17 +625,17 @@ double **readDelimDoubleArray(char *filename, char *delim)
  * @param delim The file delimiter.
  * @return A pointer to a 2D array of ints the same dimensions as the data in the input file.
  */
-int **readDelimIntArray(char *filename, char *delim)
+int **readDelimIntArray(char *filename, char *delim, int nHeaderRows)
 {
     // Get the dimensions
-    int *dims = getDelimFileDims(filename, delim);
+    int *dims = getDelimFileDims(filename, delim, nHeaderRows);
 
     // Allocate the blank array
-    int **mat = blankIntArray(dims[0], dims[1]);
+    int **mat = blankIntArray(dims[0] - nHeaderRows, dims[1]);
 
     FILE *file;
 
-    printf("Attempting to read %d rows and %d columns of int data from file %s.\n", dims[0], dims[1], filename);
+    printf("Attempting to read %d rows and %d columns of int data from file %s.\n", dims[0] - nHeaderRows, dims[1], filename);
     free(dims);
 
     file = fopen(filename, "r");
@@ -609,6 +650,12 @@ int **readDelimIntArray(char *filename, char *delim)
     int col = 0;
 
     char buf[MAX_LINE_LENGTH];
+
+    // Skip the header lines
+    for (int i = 0; i < nHeaderRows;i++) 
+    {
+        fgets(buf, MAX_LINE_LENGTH, file);
+    } 
 
     while (fgets(buf, MAX_LINE_LENGTH, file))
     {
@@ -636,13 +683,13 @@ int **readDelimIntArray(char *filename, char *delim)
  * @param field The 3D array to write to
  * @param slice The slice into which to read
  */
-void readDelimIntSlice(char *filename, char *delim, int ***field, int slice)
+void readDelimIntSlice(char *filename, char *delim, int ***field, int slice, int nHeaderRows)
 {
     // Get the dimensions
-    int *dims = getDelimFileDims(filename, delim);
+    int *dims = getDelimFileDims(filename, delim, nHeaderRows);
 
     // Read the input file
-    int **mat = readDelimIntArray(filename, delim);
+    int **mat = readDelimIntArray(filename, delim, nHeaderRows);
 
     for (int row = 0; row < dims[0]; row++)
     {

@@ -167,9 +167,7 @@ double getDoubleDictValue(struct ParamDict dict, char *key)
 struct Model
 {
   struct ParamDict params;
-  double **colonizeProbs;
-  double **deathProbs;
-  double **displaceProbs;
+  double **speciesParams;
   int **habitatGrid;
   int ***fieldGrid;
   int *neighbors;
@@ -206,24 +204,22 @@ struct Model initializeModel(char *cfgFile, bool messages)
   // Convenience Variables
   model.nRows = getIntDictValue(model.params, "gridSizeY");
   model.nCols = getIntDictValue(model.params, "gridSizeX");
-  model.nSpecies = getIntDictValue(model.params, "n_species");
+  model.nSpecies = getIntDictValue(model.params, "n_species") + 1; // The +1 accounts for the null species which occupies the empty cells.
   model.nHabitats = getIntDictValue(model.params, "n_habitat");
   model.distPatchRadius = getDoubleDictValue(model.params, "distPatchRadius");
   model.disturbYN = getIntDictValue(model.params, "disturbYN");
   model.burnin = getIntDictValue(model.params, "disturbYN");
 
-  //  Read in submodel parameters from the corresponding files.
-  model.colonizeProbs = readDelimDoubleArray(getDictValue(model.params, "colonizeProbsFile"), " ");
-  model.deathProbs = readDelimDoubleArray(getDictValue(model.params, "deathProbsFile"), " ");
-  model.displaceProbs = readDelimDoubleArray(getDictValue(model.params, "displaceProbsFile"), " ");
+  //  Read in submodel parameters for the species from the configuration file:
+  model.speciesParams = readDelimDoubleArray(getDictValue(model.params, "speciesParamsFile"), ",", 1);
 
   // Check if color map file is provided, if not generate random color map
   // Rows are species, columns are colors (RGB values).
   if (strcmp(getDictValue(model.params, "colorMapFile"), "NULL") == 0)
   {
-    printf("No colormap file provided, generating %d random colors.\n", model.nSpecies + 1);
-    model.colorMap = (int **)calloc(model.nSpecies + 1, sizeof(int*));
-    for (int i = 0; i < model.nSpecies + 1; i++)
+    printf("No colormap file provided, generating %d random colors.\n", model.nSpecies);
+    model.colorMap = (int **)calloc(model.nSpecies, sizeof(int *));
+    for (int i = 0; i < model.nSpecies; i++)
     {
       model.colorMap[i] = calloc(3, sizeof(int));
       for (int j = 0; j < 3; j++)
@@ -234,7 +230,7 @@ struct Model initializeModel(char *cfgFile, bool messages)
   }
   else
   {
-    model.colorMap = readDelimIntArray(getDictValue(model.params, "colorMapFile"), " ");
+    model.colorMap = readDelimIntArray(getDictValue(model.params, "colorMapFile"), ",", 1);
   }
 
   // Create the 3D field grid and 2D habitat grid.
@@ -249,26 +245,26 @@ struct Model initializeModel(char *cfgFile, bool messages)
   }
 
   // Read in the habitat and field data:
-  model.habitatGrid = readDelimIntArray(getDictValue(model.params, "habitatFileName"), " ");
+  model.habitatGrid = readDelimIntArray(getDictValue(model.params, "habitatFileName"), ",", 0);
   if (messages)
     printf("model.c reading field file %s...\n", getDictValue(model.params, "fieldFileName"));
 
   if (strcmp(getDictValue(model.params, "readResumeFieldFile"), "NULL") == 0)
   {
     printf("Reading intial conditions from field file %s.\n", getDictValue(model.params, "fieldFileName"));
-    readDelimIntSlice(getDictValue(model.params, "fieldFileName"), " ", model.fieldGrid, 0);
+    readDelimIntSlice(getDictValue(model.params, "fieldFileName"), " ", model.fieldGrid, 0, 0);
   }
   else
   {
     printf("Resuming simulation from field file %s.\n", getDictValue(model.params, "readResumeFieldFile"));
-    readDelimIntSlice(getDictValue(model.params, "readResumeFieldFile"), " ", model.fieldGrid, 0);
+    readDelimIntSlice(getDictValue(model.params, "readResumeFieldFile"), " ", model.fieldGrid, 0, 0);
   }
   printf("Successfully read habitat and species data.\n");
 
   // Allocate memory for model state variables
   model.neighbors = (int *)calloc(8, sizeof(int));
   model.weights = (double *)calloc(8, sizeof(double));
-  model.popCensus = calloc(model.nSpecies + 1, sizeof(int));
+  model.popCensus = calloc(model.nSpecies, sizeof(int));
   printf("Allocated memory for model state variables.\n");
 
   // Set up disturbance footprint
@@ -327,20 +323,18 @@ int wrapIndex(int index, int maxIndex)
 
 /**
  * @brief Get the species IDs of the cells in the Moore neighborhood.
+ * @param model A model struct.
  * @param row Thr row number of the central cell.
  * @param col Thr column number of the central cell.
- * @param nRow The number of rows in the grid. This allows for wrapping.
- * @param nCol The number of columns in the grid. This allows for wrapping.
- * @param fieldGrid The 3D model field
- * @param neighbors A pointer to an array to hold the neighboring cells' species IDs.
- * @param slice Which layer to read from
+ * @param slice Which layer in the model's field to read from.
  * @note
  */
-void getMooreNeighbors(
-    int row, int col,
-    int nRow, int nCol,
-    int ***fieldGrid, int *neighbors, int slice)
+void setMooreNeighbors(
+    struct Model model,
+    int row, int col, int slice)
 {
+  int nCol = model.nCols;
+  int nRow = model.nRows;
   // pre allocate the search indices
   int x[8] =
       {
@@ -365,133 +359,113 @@ void getMooreNeighbors(
 
   for (int i = 0; i < 8; i++)
   {
-    neighbors[i] = fieldGrid[slice][y[i]][x[i]];
+    model.neighbors[i] = model.fieldGrid[slice][y[i]][x[i]];
   }
 }
 
 /**
  * @brief Get the weights of a set of neighbors for colonization, competition, displacement, etc.
+ * @param model A model struct.
  * @param n the number of weights to retrieve.
- * @param neighbors A pointer to an array to hold the neighboring cells' species IDs.
- * @param weights A pointer to an array of double weights.
- * @param habitat The habitat code
- * @param weightMatrix A matrix of weights coded by species and habitat type.  Rows are species ID codes, columns are habitats.
- * @return An array of weights to use for weighted random sampling.
- * @note This function uses recursion and may cause stack overflow for large values of n
+ * @param hab The habitat code
+ * @param paramsColumn The column of the species parameters array in which the desired weights are held.
  */
-double *getNeighborWeights(int n, int *neighbors, double *weights, int habitat, double **weightMatrix)
+void *setNeighborWeights(
+    struct Model model,
+    int n, int hab, int paramsColumn)
 {
   for (int i = 0; i < n; i++)
   {
-    weights[i] = weightMatrix[neighbors[i]][habitat];
+    model.weights[i] = model.speciesParams[hab * model.nSpecies + model.neighbors[i]][paramsColumn];
   }
-  return weights;
 }
 
 /**
  * @brief Colonize a (preferably empty) cell.
- * @param fieldGrid The current field of the model
- * @param habGrid The habitat grid of the model
- * @param colonizeProbs The matrix of colonization probabilityes
- * @param neighbors A pointer to an array to hold the neighboring cells' species IDs.
- * @param weights A pointer to an array of double weights.
+ * @param model A model struct
  * @param row The row of the cell to colonize
  * @param col The column of the cell to colonize
+ * @param habOffset Precalculate the offset for the species parameters lookup.
  * @param slice The slice (layer) of the field grid
- * @param nRows The number of rows in the world
- * @param nCols The number of columns in the world
  * @param key1 The random number for deciding whether to colonize or not
  * @param key2 The random number for deciding which neighbor colonizes
  */
 int colonizeCell(
-    int ***fieldGrid, int **habGrid,
-    double **colonizeProbs,
-    int *neighbors,
-    double *weights,
-    int row, int col, int slice,
-    int nRows, int nCols,
+    struct Model model,
+    int row, int col, int habOffset, int slice,
     double key1, double key2)
 {
   // Get the neighbors of the empty cell
-  int hab = habGrid[row][col];
+  int hab = model.habitatGrid[row][col];
 
-  getMooreNeighbors(row, col, nRows, nCols, fieldGrid, neighbors, slice);
-  getNeighborWeights(8, neighbors, weights, hab, colonizeProbs);
+  // Colonization probabilities are in column 5 of the species parameters array:
+  setMooreNeighbors(model, row, col, slice);
+  setNeighborWeights(model, 8, hab, 4);
 
   // Need the probability that nobody colonizes the cell.
   // That's the product of 1 - weight_i for all weights.
+  // Colonization probabilities are in the fifth column of the species parameters array
   double probNoColonize = 1;
   for (int i = 0; i < 8; i++)
-    probNoColonize = probNoColonize * (1.0 - weights[i]);
+    probNoColonize = probNoColonize * (1.0 - model.speciesParams[habOffset + model.neighbors[i]][4]);
 
   if (key1 < probNoColonize)
     return 0;
 
-  return neighbors[weightedRandomSample(8, weights, key2)];
+  return model.neighbors[weightedRandomSample(8, model.weights, key2)];
 }
 
 /**
  * @brief Decide whether the individual in a currently occupied cell should die.
- * @param deathProbs The matrix of death probabilities.  Rows are species, columns are habitats.
+ * @param model a Model struct.
  * @param speciesID Which species is up for death?
- * @param hab Which habitat is the species living on?
+ * @param habOffset Precalculate the offset for the species parameters lookup.
  * @param key The random number for deciding whether to die or not
  */
-int die(double **deathProbs, int speciesID, int hab, double key)
+int die(struct Model model, int speciesID, int habOffset, double key)
 {
-  if (key <= deathProbs[speciesID][hab])
+  // Death probabilities are in the 3rd column
+  if (key <= model.speciesParams[habOffset + speciesID][2])
     return 0;
   return speciesID;
 }
 
 /**
  * @brief Displace the individual in a currently occpied cell
- * @param fieldGrid The current field of the model
- * @param habGrid The habitat grid of the model
- * @param neighbors A pointer to an array to hold the neighboring cells' species IDs.
- * @param weights A pointer to an array of double weights.
- * @param displaceProbs The matrix of displacement probabilities.  Row species displace collumn species.
+ * @param model A model struct.
  * @param row The row of the cell
  * @param col The column of the cell
- * @param nRows The number of rows in the world
- * @param nCols The number of columns in the world
  * @param slice The slice (layer) of the field grid
+ * @param speciesID The species present in the cell
+ * @param habOffset Precalculate the offset for the species parameters lookup.
  * @param key1 The random number for deciding whether to displace or not
  * @param key2 The random number for deciding which neighbor displaces
  */
-int displace(
-    int ***fieldGrid, int **habGrid,
-    double **displaceProbs,
-    int *neighbors,
-    double *weights,
-    int nSpecies, int speciesID,
-    int row, int col, int nRows, int nCols, int slice,
+int compete(
+    struct Model model,
+    int row, int col, int slice,
+    int speciesID, int habOffset,
     double key1, double key2)
 {
+  setMooreNeighbors(model, row, col, slice);
 
-  int hab = habGrid[row][col];
-
-  getMooreNeighbors(row, col, nRows, nCols, fieldGrid, neighbors, slice);
-
-  // Weights are from the competition/displacement matrix.
-  // The probability of displacement of a row species on the column species
-  // The +1 is because the 0 species represents empty and can't colonize
+  // The colonization probabilties are in the fourth column of the species parameters array.
   for (int i = 0; i < 8; i++)
   {
-    weights[i] = displaceProbs[(hab * (nSpecies + 1)) + neighbors[i]][speciesID];
+    model.weights[i] = model.speciesParams[habOffset + model.neighbors[i]][3];
   }
 
   // Need the probability of no displacement:
   double noDisplace = 1;
   for (int i = 0; i < 8; i++)
   {
-    noDisplace = noDisplace * (1.0 - weights[i]);
+    noDisplace = noDisplace * (1.0 - model.weights[i]);
   }
 
   if (key1 < noDisplace)
     return speciesID;
 
-  return neighbors[weightedRandomSample(8, weights, key2)];
+  return model.neighbors[weightedRandomSample(8, model.weights, key2)];
 }
 
 /**
@@ -505,7 +479,7 @@ int displace(
  */
 void census(int ***field, int *pops, int slice, int nRows, int nCols, int nSpecies)
 {
-  for (int i = 0; i < nSpecies + 1; i++)
+  for (int i = 0; i < nSpecies; i++)
     pops[i] = 0;
   for (int row = 0; row < nRows; row++)
   {
@@ -572,30 +546,17 @@ void step(int sliceCurrent, int step, struct Model model)
     {
       int speciesID = model.fieldGrid[sliceCurrent][row][col];
       int hab = model.habitatGrid[row][col];
+      int habOffset = hab * model.nSpecies;
       // If the cell is unoccupied, apply colonize submodel
       if (speciesID == 0)
       {
         model.fieldGrid[sliceNext][row][col] = colonizeCell(
-            model.fieldGrid, model.habitatGrid,
-            model.colonizeProbs,
-            model.neighbors,
-            model.weights,
-            row, col, sliceCurrent,
-            model.nRows, model.nCols,
-            randomFloat(), randomFloat());
+          model, row, col, habOffset, sliceCurrent, randomFloat(), randomFloat());
       }
       else
       {
         // Check if any neighbors displace the current cell
-        displacingSpecies = displace(
-            model.fieldGrid, model.habitatGrid,
-            model.displaceProbs,
-            model.neighbors,
-            model.weights,
-            model.nSpecies,
-            speciesID, row, col,
-            model.nRows, model.nCols, sliceCurrent,
-            randomFloat(), randomFloat());
+        displacingSpecies = compete(model, row, col, sliceCurrent, speciesID, habOffset, randomFloat(), randomFloat());
 
         if (displacingSpecies != speciesID)
         {
@@ -604,7 +565,7 @@ void step(int sliceCurrent, int step, struct Model model)
         // Otherwise set up a death trial:
         else
         {
-          model.fieldGrid[sliceNext][row][col] = die(model.deathProbs, speciesID, hab, randomFloat());
+          model.fieldGrid[sliceNext][row][col] = die(model, speciesID, habOffset, randomFloat());
         }
       }
     }

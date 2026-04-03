@@ -58,154 +58,13 @@ void testFileIO()
 {
 
    printf("Testing file IO...\n");
-   int nRows = 10;
-   int nCols = 12;
-
-   printIntArray(blankIntArray(nRows, nCols), nRows, nCols);
-   printDoubleArray(blankDoubleArray(nRows, nCols), nRows, nCols, "%.1f ");
-
-   printIntArray(readDelimIntArray("./cfg/test1_field.txt", " "), 20, 30);
-   printDoubleArray(readDelimDoubleArray("./cfg/test1_field.txt", " "), 20, 30, "%0.2f ");
-
-   // Test file writing:
-   // writeIntArray("test1_write_file.txt", mat2, 9, 10, false);
-
-   // Test append mode
-   // writeIntArray("test1_write_file2.txt", mat2, 9, 10, false);
-   // writeIntArray("test1_write_file2.txt", mat3, 20, 30, true);
-   // writeDoubleArray("test1_write_file2.txt", mat2d, 9, 10, true);
-
-   // Test writing a slice:
-   // struct Model model = initializeModel("test1.cfg", false);
-   // writeIntSlice("test1_write_slice.txt", model.fieldGrid, 0, model.nRows, model.nCols, false);
-   // writeIntSlice("test1_write_slice.txt", model.fieldGrid, 1, model.nRows, model.nCols, true);
-
-   getDelimFileDims("./cfg/test1_colonize.txt", " ");
-   getDelimFileDims("./cfg/test_data.csv", ",");
-   printIntArray(readDelimIntArray("./cfg/test_data.csv", ","), 4, 5);
+   
+   char* filename = "./cfg/test_3sp_cfg.csv";
+   int* dims = getDelimFileDims(filename, ",", 1);
+   double** testArrDouble = readDelimDoubleArray(filename, ",", 1);
+   printDoubleArray(testArrDouble, dims[0], dims[1], "%0.4f ");
 
    writeCensusHeader("./out/census_header_test.txt", 100, "sp_%05d", ",");
-}
-
-void testModel()
-{
-   printf("Testing model...\n\n");
-
-   struct Model model = initializeModel("./cfg/test1.cfg", false);
-
-   int nsp = model.nSpecies;
-   int nhab = model.nHabitats;
-
-   printf("testing displace probs\n");
-   printDoubleArray(model.displaceProbs, nhab * (nsp + 1), nsp + 1, "%.2f ");
-   printf("testing death probs\n");
-   printDoubleArray(model.deathProbs, nsp + 1, nhab, "%.2f ");
-   printf("testing colonize probs\n");
-   printDoubleArray(model.colonizeProbs, nsp + 1, nhab, "%.1f ");
-   printf("testing habitat grid\n");
-   printIntArray(model.habitatGrid, nsp + 1, nhab);
-   printf("testing field grid\n");
-   printIntSlice(model.fieldGrid, 0, 20, 30);
-}
-
-void testSubmodels()
-{
-
-   printf("Testing submodels...\n\n");
-
-   char *cfgFile = "test3cfg";
-   char *fieldFileOut = "./out/test3_field.txt";
-
-   struct Model model = initializeModel(cfgFile, false);
-
-   getMooreNeighbors(
-       0, 0,
-       model.nRows, model.nCols,
-       model.fieldGrid,
-       model.neighbors,
-       0);
-   for (int i = 0; i < 8; i++)
-      printf("%d ", model.neighbors[i]);
-
-   getNeighborWeights(8, model.neighbors, model.weights, 1, model.colonizeProbs);
-   printf("Model weights: \n");
-   for (int i = 0; i < 8; i++)
-      printf("%f ", model.weights[i]);
-
-   int colonizer;
-   colonizer = colonizeCell(
-       model.fieldGrid,
-       model.habitatGrid,
-       model.colonizeProbs,
-       model.neighbors,
-       model.weights,
-       2, 0, 0,
-       model.nRows, model.nCols,
-       randomFloat(), randomFloat());
-   printf("colonizing species: %d\n", colonizer);
-
-   step(0, 0, model);
-
-   int nSteps = 0;
-
-   writeIntSlice(fieldFileOut, model.fieldGrid, 0, model.nRows, model.nCols, ",", false);
-
-   for (int i = 0; i < nSteps; i++)
-   {
-
-      step(i % 2, i, model);
-      writeIntSlice(fieldFileOut, model.fieldGrid, i % 2, model.nRows, model.nCols, ",", true);
-   }
-
-   // disturb(model.fieldGrid, 5.2, 1, 0, model.nRows, model.nCols);
-   printIntSlice(model.fieldGrid, 0, model.nRows, model.nCols);
-}
-
-void testSimulate(int nSteps)
-{
-
-   printf("Testing simulation....\n");
-
-   char *fieldFilenameOut = "./out/test4_field_out.txt";
-   char *cfgFile = "test4.cfg";
-   bool writePPM = false;
-
-   struct Model model = initializeModel(cfgFile, false);
-
-   int nRows = model.nRows;
-   int nCols = model.nCols;
-   int nSp = model.nSpecies;
-   char ppmFilename[1000];
-
-   writeIntSlice(fieldFilenameOut, model.fieldGrid, 0, nRows, nCols, ",", false);
-
-   // Make a random color map:
-   int **colorMap = (int **)calloc(nSp + 1, sizeof(int));
-   for (int i = 0; i < nSp + 1; i++)
-   {
-      colorMap[i] = calloc(3, sizeof(int));
-      for (int j = 0; j < 3; j++)
-      {
-         colorMap[i][j] = (int)(255.0 * randomFloat());
-      }
-   }
-
-   int i = 0;
-   for (i = 0; i < nSteps; i++)
-   {
-      int slice = i % 2;
-
-      if (writePPM)
-      {
-         sprintf(ppmFilename, "./out/ppm_test_%03d.ppm", i);
-         writeIntSlicePPM(ppmFilename, model.fieldGrid, colorMap, slice, nRows, nCols);
-      }
-
-      printf("time step %d of %d.\n", i, nSteps);
-      disturb(model.fieldGrid, model.disturbanceFootprint, 3.1, 2, slice, nRows, nCols);
-      step(slice, i, model);
-      writeIntSlice(fieldFilenameOut, model.fieldGrid, i % 2, nRows, nCols, ",", true);
-   }
 }
 
 void testPPM()
@@ -362,31 +221,17 @@ void testModelRunner()
       saveParams(getDictValue(model.params, "simReportFile"), nSteps, simTime, model);
 }
 
-void testReadParams()
-{
-   char *filename = "./cfg/test6.cfg";
-
-   struct ParamDict dict = readParamDictionary(filename, " ");
-
-   char *param = "seed";
-   printf("parameter: %s, value: %s\n", param, getDictValue(dict, param));
-
-   param = "NA";
-   printf("parameter: %s, value: %s\n", param, getDictValue(dict, param));
-
-   printf(" ");
-}
 
 int main()
 {
 
    // testReadParams();
-   testModelRunner();
+   //testModelRunner();
    // testPPM();
    // testSimulate(200);
    // testSubmodels();
    // testRNG();
-   //   testFileIO();
+      testFileIO();
    //   testModel();
 
    // return 0;
