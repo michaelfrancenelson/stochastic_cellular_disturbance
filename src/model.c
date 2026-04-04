@@ -173,7 +173,6 @@ struct Model
   int *neighbors;
   double *weights;
   int *popCensus;
-  int disturbYN;
   int burnin;
   int **disturbanceFootprint;
   int nDisturbCells;
@@ -202,13 +201,10 @@ struct Model initializeModel(char *cfgFile, bool messages)
   initializeRS(getIntDictValue(model.params, "seed"));
 
   // Convenience Variables
-  // model.nRows = getIntDictValue(model.params, "gridSizeY");
-  // model.nCols = getIntDictValue(model.params, "gridSizeX");
   model.nSpecies = getIntDictValue(model.params, "n_species") + 1; // The +1 accounts for the null species which occupies the empty cells.
   model.nHabitats = getIntDictValue(model.params, "n_habitat");
   model.distPatchRadius = getDoubleDictValue(model.params, "distPatchRadius");
-  model.disturbYN = getIntDictValue(model.params, "disturbYN");
-  model.burnin = getIntDictValue(model.params, "disturbYN");
+  model.burnin = getIntDictValue(model.params, "burnin");
 
   //  Read in submodel parameters for the species from the configuration file:
   model.speciesParams = readDelimDoubleArray(getDictValue(model.params, "speciesParamsFile"), ",", 1);
@@ -279,39 +275,46 @@ struct Model initializeModel(char *cfgFile, bool messages)
   printf("Allocated memory for model state variables.\n");
 
   // Set up disturbance footprint
-  double radius = getDoubleDictValue(model.params, "distPatchRadius");
-  int footprintSize = (int)pow(2 * radius + 1, 2);
-  model.disturbanceFootprint = (int **)calloc(2, sizeof(int));
-  for (int i = 0; i < 2; i++)
-    model.disturbanceFootprint[i] = calloc(footprintSize, sizeof(int));
-
-  int nCells = 0;
-  int radiusInt = ceil(radius);
-
-  // Brute force: check distance to each index in bounding box:
-  // Faster option might be to do this for just the first quadrant and then reflect.
-  // Probably ok since this only runs once at model initialization.
-  for (int i = -radiusInt; i <= radiusInt; i++)
+  if (getDoubleDictValue(model.params, "meanDistPct") > 0)
   {
-    for (int j = -radiusInt; j <= radiusInt; j++)
+    double radius = getDoubleDictValue(model.params, "distPatchRadius");
+    int footprintSize = (int)pow(2 * radius + 1, 2);
+    model.disturbanceFootprint = (int **)calloc(2, sizeof(int));
+    for (int i = 0; i < 2; i++)
+      model.disturbanceFootprint[i] = calloc(footprintSize, sizeof(int));
+
+    int nCells = 0;
+    int radiusInt = ceil(radius);
+
+    // Brute force: check distance to each index in bounding box:
+    // Faster option might be to do this for just the first quadrant and then reflect.
+    // Probably ok since this only runs once at model initialization.
+    for (int i = -radiusInt; i <= radiusInt; i++)
     {
-      double dist = sqrt(pow(i, 2) + pow(j, 2));
-      if (dist <= radius)
+      for (int j = -radiusInt; j <= radiusInt; j++)
       {
-        model.disturbanceFootprint[0][nCells] = i;
-        model.disturbanceFootprint[1][nCells] = j;
-        nCells++;
+        double dist = sqrt(pow(i, 2) + pow(j, 2));
+        if (dist <= radius)
+        {
+          model.disturbanceFootprint[0][nCells] = i;
+          model.disturbanceFootprint[1][nCells] = j;
+          nCells++;
+        }
       }
     }
-  }
-  model.nDisturbCells = nCells;
-  // Set up disturbance footprint
-  // Pre-calculate the mean number of disturbance patches.
+    model.nDisturbCells = nCells;
+    // Set up disturbance footprint
+    // Pre-calculate the mean number of disturbance patches.
 
-  double distArea = 0.01 * getDoubleDictValue(model.params, "meanDistPct") * model.nRows * model.nCols;
-  double patchArea = (double)nCells;
-  // How many patches are needed to approximately cover this area?
-  model.meanDistPatchCount = distArea / patchArea;
+    double distArea = 0.01 * getDoubleDictValue(model.params, "meanDistPct") * model.nRows * model.nCols;
+    double patchArea = (double)nCells;
+    // How many patches are needed to approximately cover this area?
+    model.meanDistPatchCount = distArea / patchArea;
+  }
+  else
+  {
+    model.meanDistPatchCount = 0.0;
+  }
 
   return model;
 }
@@ -585,7 +588,7 @@ void step(int sliceCurrent, int step, struct Model model)
     }
   }
   // Run the disturbance model last
-  if ((model.disturbYN == 1) && (step >= model.burnin))
+  if ((model.meanDistPatchCount > 0.0) && (step >= model.burnin))
   {
 
     int n_patches = random_poisson(model.meanDistPatchCount);
@@ -617,10 +620,12 @@ void saveParams(char *filename, int nSteps, double simTime, struct Model model)
   fprintf(file, "nCols: %d\n", model.nCols);
   fprintf(file, "n_species: %s\n", getDictValue(model.params, "n_species"));
   fprintf(file, "n_habitat: %s\n", getDictValue(model.params, "n_habitat"));
-  fprintf(file, "disturbYN: %s\n", getDictValue(model.params, "disturbYN"));
+
   fprintf(file, "meanDistPct: %s\n", getDictValue(model.params, "meanDistPct"));
   fprintf(file, "distPatchRadius: %s\n", getDictValue(model.params, "distPatchRadius"));
+  
   fprintf(file, "seed: %s\n", getDictValue(model.params, "seed"));
+  
   fprintf(file, "speciesParamsFile: %s\n", getDictValue(model.params, "speciesParamsFile"));
   fprintf(file, "habitatFileName: %s\n", getDictValue(model.params, "habitatFileName"));
   fprintf(file, "outputFieldFile: %s\n", getDictValue(model.params, "outputFieldFile"));

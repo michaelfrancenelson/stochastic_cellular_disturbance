@@ -1,0 +1,17 @@
+n_species 100
+n_habitat 1
+burnin 100
+meanDistPct 10
+distPatchRadius 10
+seed 11111111
+censusInterval 100
+fieldFileName ./input/100sp_field.txt 
+habitatFileName ./input/100sp_habitat.txt
+speciesParamsFile ./cfg/params_100sp_1.csv
+simReportFile ./out/100sp_report4.txt
+saveResumeFieldFile ./out/100_species_resume4.txt
+outputCensusFile ./out/100_species_census4.txt
+outputFieldFile NULL
+readResumeFieldFile NULL
+outputImageFile NULL
+colorMapFile NULL
