@@ -59,7 +59,7 @@ void testFileIO()
 
    printf("Testing file IO...\n");
    
-   char* filename = "./cfg/test_3sp_cfg.csv";
+   char* filename = "./cfg/params_3sp_1.csv";
    int* dims = getDelimFileDims(filename, ",", 1);
    double** testArrDouble = readDelimDoubleArray(filename, ",", 1);
    printDoubleArray(testArrDouble, dims[0], dims[1], "%0.4f ");
@@ -130,8 +130,8 @@ void testPPM()
 
 void testModelRunner()
 {
-   char *cfgFile = "./cfg/test1.cfg";
-   int nSteps = 10;
+   char *cfgFile = "./cfg/cfg_3sp_1.txt";
+   int nSteps = 400;
 
    int quiet = 1;
 
@@ -225,13 +225,13 @@ void testModelRunner()
 int main()
 {
 
+   testFileIO();
    // testReadParams();
-   //testModelRunner();
+   testModelRunner();
    // testPPM();
    // testSimulate(200);
    // testSubmodels();
    // testRNG();
-      testFileIO();
    //   testModel();
 
    // return 0;

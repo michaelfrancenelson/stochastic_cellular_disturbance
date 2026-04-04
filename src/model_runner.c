@@ -32,7 +32,6 @@ int main(int argc, char *argv[])
     int nCols = model.nCols;
     int nSp = model.nSpecies;
 
-    char *colorMapFile = getDictValue(model.params, "colorMapFile");
     char *outputFieldFile = getDictValue(model.params, "outputFieldFile");
     char *outputImageFile = getDictValue(model.params, "outputImageFile");
 

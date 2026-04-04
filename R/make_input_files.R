@@ -1,4 +1,29 @@
 require(here)
+require(data.tab.e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 make_death_probs = function(nhab, nsp, min, max)
 {
@@ -26,6 +51,13 @@ make_colonize_probs = function(nhab, nsp, min, max)
   mat[1, ] = 0
   return(mat)
 }
+
+
+
+
+
+
+
 
 
 
@@ -104,5 +136,20 @@ write.table(
   here("model_runs", "input", "1k_sp_color_map_rainbow.txt"),
   sep = " ", row.names=F, col.names = F)
 
+
+
+
+# 3 species ----
+
+nrow = 1000
+ncol = 1000
+fwrite(
+  matrix(sample(0:3, nrow * ncol, replace = T, prob = c(100, 1, 1, 1)), nrow = nrow, ncol = ncol),
+  here("test", "input", "3sp_field.txt"),
+  sep = " ", col.names = F)
+fwrite(
+  matrix(sample(0:1, nrow * ncol, replace = T), nrow = nrow, ncol = ncol),
+  here("test", "input", "3sp_habitat.txt"),
+  sep = " ", col.names = F)
 
 

@@ -358,7 +358,7 @@ void writeIntVector(char *filename, int *arr, int nElements, char* delim, bool a
 /**
  * @brief Write the header for the census file.
  * @param filename The name of the file to write to
- * @param nSpecies The number of species in the simulation.  An additional column will be added for the 'zero species', i.e. an empty cell.
+ * @param nSpecies The number of species in the simulation.
  * @param fmt The format to use for the species names/numbers.  "sp_%04d" will label species as "sp_0000", "sp_0001", etc.
  * @param delim The delimiter.  Should be a space or a comma.
  */
@@ -376,14 +376,14 @@ void writeCensusHeader(char *filename, int nSpecies, char* fmt, char* delim)
     }
 
     fprintf(file, "step");
-    fprintf(file, delim);
-    for (int i = 0; i < nSpecies; i++)
+    fprintf(file, "%s", delim);
+    for (int i = 0; i < nSpecies - 1; i++)
     {
         fprintf(file, fmt, i);
-        fprintf(file, delim);
+        fprintf(file, "%s", delim);
     }
 
-    fprintf(file, fmt, nSpecies);
+    fprintf(file, fmt, nSpecies -1);
     fprintf(file, "\n");
     fclose(file);
 
@@ -413,11 +413,12 @@ void writeCensusLine(char *filename, int *arr, int nElements, int timeStep, char
     }
 
     fprintf(file, "%d%s", timeStep, delim);
-    for (int i = 0; i < nElements; i++)
+    for (int i = 0; i < nElements -1; i++)
     {
         fprintf(file, "%d%s", arr[i], delim);
     }
-    fprintf(file, "%d\n", arr[nElements]);
+    //fprintf(file, "\n");
+    fprintf(file, "%d\n", arr[nElements - 1]);
     fclose(file);
 }
 

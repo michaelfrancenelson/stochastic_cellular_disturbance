@@ -202,8 +202,8 @@ struct Model initializeModel(char *cfgFile, bool messages)
   initializeRS(getIntDictValue(model.params, "seed"));
 
   // Convenience Variables
-  model.nRows = getIntDictValue(model.params, "gridSizeY");
-  model.nCols = getIntDictValue(model.params, "gridSizeX");
+  // model.nRows = getIntDictValue(model.params, "gridSizeY");
+  // model.nCols = getIntDictValue(model.params, "gridSizeX");
   model.nSpecies = getIntDictValue(model.params, "n_species") + 1; // The +1 accounts for the null species which occupies the empty cells.
   model.nHabitats = getIntDictValue(model.params, "n_habitat");
   model.distPatchRadius = getDoubleDictValue(model.params, "distPatchRadius");
@@ -219,7 +219,12 @@ struct Model initializeModel(char *cfgFile, bool messages)
   {
     printf("No colormap file provided, generating %d random colors.\n", model.nSpecies);
     model.colorMap = (int **)calloc(model.nSpecies, sizeof(int *));
-    for (int i = 0; i < model.nSpecies; i++)
+    // The empty cells should be black:
+    model.colorMap[0] = calloc(3, sizeof(int));
+    model.colorMap[0][0] = 0;
+    model.colorMap[0][0] = 0;
+    model.colorMap[0][0] = 0;
+    for (int i = 1; i < model.nSpecies; i++)
     {
       model.colorMap[i] = calloc(3, sizeof(int));
       for (int j = 0; j < 3; j++)
@@ -233,6 +238,12 @@ struct Model initializeModel(char *cfgFile, bool messages)
     model.colorMap = readDelimIntArray(getDictValue(model.params, "colorMapFile"), ",", 1);
   }
 
+  // Get the size of the field from the input file:
+  int *fieldDims = getDelimFileDims(getDictValue(model.params, "fieldFileName"), " ", 0);
+  model.nRows = fieldDims[0];
+  model.nCols = fieldDims[1];
+  free(fieldDims);
+
   // Create the 3D field grid and 2D habitat grid.
   model.fieldGrid = (int ***)calloc(2, sizeof(int *));
   for (int i = 0; i < 2; i++)
@@ -245,7 +256,7 @@ struct Model initializeModel(char *cfgFile, bool messages)
   }
 
   // Read in the habitat and field data:
-  model.habitatGrid = readDelimIntArray(getDictValue(model.params, "habitatFileName"), ",", 0);
+  model.habitatGrid = readDelimIntArray(getDictValue(model.params, "habitatFileName"), " ", 0);
   if (messages)
     printf("model.c reading field file %s...\n", getDictValue(model.params, "fieldFileName"));
 
@@ -372,11 +383,11 @@ void setMooreNeighbors(
  */
 void *setNeighborWeights(
     struct Model model,
-    int n, int hab, int paramsColumn)
+    int n, int habOffset, int paramsColumn)
 {
   for (int i = 0; i < n; i++)
   {
-    model.weights[i] = model.speciesParams[hab * model.nSpecies + model.neighbors[i]][paramsColumn];
+    model.weights[i] = model.speciesParams[habOffset + model.neighbors[i]][paramsColumn];
   }
 }
 
@@ -396,11 +407,9 @@ int colonizeCell(
     double key1, double key2)
 {
   // Get the neighbors of the empty cell
-  int hab = model.habitatGrid[row][col];
-
   // Colonization probabilities are in column 5 of the species parameters array:
   setMooreNeighbors(model, row, col, slice);
-  setNeighborWeights(model, 8, hab, 4);
+  setNeighborWeights(model, 8, habOffset, 4);
 
   // Need the probability that nobody colonizes the cell.
   // That's the product of 1 - weight_i for all weights.
@@ -547,11 +556,16 @@ void step(int sliceCurrent, int step, struct Model model)
       int speciesID = model.fieldGrid[sliceCurrent][row][col];
       int hab = model.habitatGrid[row][col];
       int habOffset = hab * model.nSpecies;
+
       // If the cell is unoccupied, apply colonize submodel
       if (speciesID == 0)
       {
         model.fieldGrid[sliceNext][row][col] = colonizeCell(
-          model, row, col, habOffset, sliceCurrent, randomFloat(), randomFloat());
+            model,
+            row, col,
+            habOffset,
+            sliceCurrent,
+            randomFloat(), randomFloat());
       }
       else
       {
@@ -599,19 +613,16 @@ void saveParams(char *filename, int nSteps, double simTime, struct Model model)
     perror(msg);
   }
 
-  fprintf(file, "gridSizeX: %s\n", getDictValue(model.params, "gridSizeX"));
-  fprintf(file, "gridSizeY: %s\n", getDictValue(model.params, "gridSizeY"));
+  fprintf(file, "nRows: %d\n", model.nRows);
+  fprintf(file, "nCols: %d\n", model.nCols);
   fprintf(file, "n_species: %s\n", getDictValue(model.params, "n_species"));
   fprintf(file, "n_habitat: %s\n", getDictValue(model.params, "n_habitat"));
   fprintf(file, "disturbYN: %s\n", getDictValue(model.params, "disturbYN"));
   fprintf(file, "meanDistPct: %s\n", getDictValue(model.params, "meanDistPct"));
   fprintf(file, "distPatchRadius: %s\n", getDictValue(model.params, "distPatchRadius"));
   fprintf(file, "seed: %s\n", getDictValue(model.params, "seed"));
-  fprintf(file, "fieldFileName: %s\n", getDictValue(model.params, "fieldFileName"));
+  fprintf(file, "speciesParamsFile: %s\n", getDictValue(model.params, "speciesParamsFile"));
   fprintf(file, "habitatFileName: %s\n", getDictValue(model.params, "habitatFileName"));
-  fprintf(file, "colonizeProbsFile: %s\n", getDictValue(model.params, "colonizeProbsFile"));
-  fprintf(file, "deathProbsFile: %s\n", getDictValue(model.params, "deathProbsFile"));
-  fprintf(file, "displaceProbsFile: %s\n", getDictValue(model.params, "displaceProbsFile"));
   fprintf(file, "outputFieldFile: %s\n", getDictValue(model.params, "outputFieldFile"));
 
   fprintf(file, "saveResumeFieldFile: %s\n", getDictValue(model.params, "saveResumeFieldFile"));
