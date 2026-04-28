@@ -343,7 +343,7 @@ int wrapIndex(int index, int maxIndex)
  * @param slice Which layer in the model's field to read from.
  * @note
  */
-void setMooreNeighbors(
+void setMooreNeighborsEdge(
     struct Model model,
     int row, int col, int slice)
 {
@@ -370,6 +370,48 @@ void setMooreNeighbors(
           (row - 1 + nRow) % nRow,
           (row - 1 + nRow) % nRow,
           (row - 1 + nRow) % nRow};
+
+  for (int i = 0; i < 8; i++)
+  {
+    model.neighbors[i] = model.fieldGrid[slice][y[i]][x[i]];
+  }
+}
+
+/**
+ * @brief Get the species IDs of the cells in the Moore neighborhood.
+ * @param model A model struct.
+ * @param row Thr row number of the central cell.
+ * @param col Thr column number of the central cell.
+ * @param slice Which layer in the model's field to read from.
+ * @note
+ */
+void setMooreNeighborsCenter(
+    struct Model model,
+    int row, int col, int slice)
+{
+  int nCol = model.nCols;
+  int nRow = model.nRows;
+  // pre allocate the search indices
+  int x[8] =
+      {
+          col - 1,
+          col,
+          col + 1,
+          col - 1,
+          col + 1,
+          col - 1,
+          col,
+          col + 1};
+  int y[8] =
+      {
+          row + 1,
+          row + 1,
+          row + 1,
+          row,
+          row,
+          row - 1,
+          row - 1,
+          row - 1};
 
   for (int i = 0; i < 8; i++)
   {
@@ -406,12 +448,13 @@ void *setNeighborWeights(
  */
 int colonizeCell(
     struct Model model,
-    int row, int col, int habOffset, int slice,
+    // int row, int col,
+    int habOffset, int slice,
     double key1, double key2)
 {
   // Get the neighbors of the empty cell
   // Colonization probabilities are in column 5 of the species parameters array:
-  setMooreNeighbors(model, row, col, slice);
+  // setMooreNeighbors(model, row, col, slice);
   setNeighborWeights(model, 8, habOffset, 4);
 
   // Need the probability that nobody colonizes the cell.
@@ -455,11 +498,11 @@ int die(struct Model model, int speciesID, int habOffset, double key)
  */
 int compete(
     struct Model model,
-    int row, int col, int slice,
+    // int row, int col, int slice,
     int speciesID, int habOffset,
     double key1, double key2)
 {
-  setMooreNeighbors(model, row, col, slice);
+  // setMooreNeighbors(model, row, col, slice);
 
   // The colonization probabilties are in the fourth column of the species parameters array.
   for (int i = 0; i < 8; i++)
@@ -538,6 +581,47 @@ void disturb(
  *
  *****************************************************************************/
 
+void stepEdge(int sliceCurrent, int sliceNext, struct Model model, int rowMin, int rowMax, int colMin, int colMax)
+{
+  int displacingSpecies = 0;
+  for (int row = rowMin; row <= rowMax; row++)
+  {
+    for (int col = colMin; col <= colMax; col++)
+    {
+      int speciesID = model.fieldGrid[sliceCurrent][row][col];
+      int hab = model.habitatGrid[row][col];
+      int habOffset = hab * model.nSpecies;
+
+      setMooreNeighborsEdge(model, row, col, sliceCurrent);
+
+      // If the cell is unoccupied, apply colonize submodel
+      if (speciesID == 0)
+      {
+        model.fieldGrid[sliceNext][row][col] = colonizeCell(
+            model,
+            habOffset,
+            sliceCurrent,
+            randomFloat(), randomFloat());
+      }
+      else
+      {
+        // Check if any neighbors displace the current cell
+        displacingSpecies = compete(model, speciesID, habOffset, randomFloat(), randomFloat());
+
+        if (displacingSpecies != speciesID)
+        {
+          model.fieldGrid[sliceNext][row][col] = displacingSpecies;
+        }
+        // Otherwise set up a death trial:
+        else
+        {
+          model.fieldGrid[sliceNext][row][col] = die(model, speciesID, habOffset, randomFloat());
+        }
+      }
+    }
+  }
+}
+
 /**
  * @brief Run one step of the model simulation
  * @param slice The current layer of the field grid.  The other layer will be populated with the outcome of the step.
@@ -552,20 +636,33 @@ void step(int sliceCurrent, int step, struct Model model)
 
   int displacingSpecies = 0;
 
-  for (int row = 0; row < model.nRows; row++)
+  // Loop through the edges first.
+  // Top row:
+  stepEdge(sliceCurrent, sliceNext, model, 0, 0, 0, model.nCols - 1);
+  // Bottom row:
+  stepEdge(sliceCurrent, sliceNext, model, model.nRows - 1, model.nRows - 1, 0, model.nCols - 1);
+  // Left col:
+  stepEdge(sliceCurrent, sliceNext, model, 0, model.nRows - 1, 0, 0);
+  // Left col:
+  stepEdge(sliceCurrent, sliceNext, model, 0, model.nRows - 1, model.nCols - 1, model.nCols - 1);
+
+  // Now loop through the center
+  for (int row = 1; row < model.nRows - 1; row++)
   {
-    for (int col = 0; col < model.nCols; col++)
+    for (int col = 1; col < model.nCols - 1; col++)
     {
       int speciesID = model.fieldGrid[sliceCurrent][row][col];
       int hab = model.habitatGrid[row][col];
       int habOffset = hab * model.nSpecies;
+
+      setMooreNeighborsCenter(model, row, col, sliceCurrent);
 
       // If the cell is unoccupied, apply colonize submodel
       if (speciesID == 0)
       {
         model.fieldGrid[sliceNext][row][col] = colonizeCell(
             model,
-            row, col,
+            // row, col,
             habOffset,
             sliceCurrent,
             randomFloat(), randomFloat());
@@ -573,7 +670,7 @@ void step(int sliceCurrent, int step, struct Model model)
       else
       {
         // Check if any neighbors displace the current cell
-        displacingSpecies = compete(model, row, col, sliceCurrent, speciesID, habOffset, randomFloat(), randomFloat());
+        displacingSpecies = compete(model, speciesID, habOffset, randomFloat(), randomFloat());
 
         if (displacingSpecies != speciesID)
         {
@@ -623,9 +720,9 @@ void saveParams(char *filename, int nSteps, double simTime, struct Model model)
 
   fprintf(file, "meanDistPct: %s\n", getDictValue(model.params, "meanDistPct"));
   fprintf(file, "distPatchRadius: %s\n", getDictValue(model.params, "distPatchRadius"));
-  
+
   fprintf(file, "seed: %s\n", getDictValue(model.params, "seed"));
-  
+
   fprintf(file, "speciesParamsFile: %s\n", getDictValue(model.params, "speciesParamsFile"));
   fprintf(file, "habitatFileName: %s\n", getDictValue(model.params, "habitatFileName"));
   fprintf(file, "outputFieldFile: %s\n", getDictValue(model.params, "outputFieldFile"));

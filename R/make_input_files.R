@@ -28,6 +28,10 @@ nhab = 2
 
 energy = 0.5
 
+
+
+
+
 params_100sp = data.frame(
   species = rep(0:nsp, nhab),
   habitat = rep(0:(nhab - 1), each = nsp + 1), 
@@ -52,6 +56,83 @@ fwrite(
     nrow = nrow, ncol = ncol),
   here("test", "input", "100sp_habitat.txt"),
   sep = " ", col.names = F)
+
+fwrite(
+  matrix(
+    rep(0, nrow * ncol * 0.5), rep(1, nrow * ncol * 0.5),
+    #sample(0:1, nrow * ncol, replace = T),
+    nrow = nrow, ncol = ncol),
+  here("test", "input", "1k_1k_2_habitat.txt"),
+  sep = " ", col.names = F)
+fwrite(
+  matrix(
+    rep(0, nrow * ncol * 0.5), rep(0, nrow * ncol * 0.5),
+    #sample(0:1, nrow * ncol, replace = T),
+    nrow = nrow, ncol = ncol),
+  here("test", "input", "1k_1k_1_habitat.txt"),
+  sep = " ", col.names = F)
+
+
+# Tradeoff Species ----
+
+nsp = 100
+nhab = 1
+
+min_comp = 0.05
+max_comp = 0.15
+
+comp_100 = c(0, runif(nsp, min_comp, max_comp))
+col_100 = c(0, 0.3 - comp_100[-1])
+
+params_100sp_tradeoff = data.frame(
+  species = 0:nsp,
+  habitat = rep(0, nsp + 1), 
+  death_prob = 0, 
+  displace_prob = comp_100,
+  colonize_prob = col_100)
+write.csv(params_100sp_tradeoff, here("test", "cfg", "params_100sp_tradeoff.csv"), row.names = F)
+
+
+
+# 5000 species
+
+nsp = 5000
+nhab = 1
+
+min_comp = 0.05
+max_comp = 0.15
+
+comp_5k = c(0, runif(nsp, min_comp, max_comp))
+col_5k = c(0, 0.5 - 2 * comp_5k[-1])
+
+params_5k_sp_tradeoff = data.frame(
+  species = 0:nsp,
+  habitat = rep(0, nsp + 1), 
+  death_prob = 0, 
+  displace_prob = comp_5k,
+  colonize_prob = col_5k)
+write.csv(params_5k_sp_tradeoff, here("test", "cfg", "params_5k_sp_tradeoff.csv"), row.names = F)
+
+
+
+set.seed(1)
+fwrite(
+  matrix(sample(0:5000, 1e6, replace = T, prob = c(1000, rep(1, 5000))), nrow = 1000, ncol = 1000),
+  here("test", "input", "5k_sp_field_1.txt"),
+       sep = " ", col.names = F)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

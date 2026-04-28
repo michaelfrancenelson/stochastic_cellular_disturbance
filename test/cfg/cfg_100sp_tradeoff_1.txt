@@ -1,0 +1,19 @@
+n_species 100
+n_habitat 1
+burnin 100
+meanDistPct 0.1
+distPatchRadius 10
+seed 11111111
+censusInterval 100
+fieldFileName ./input/100sp_field.txt 
+habitatFileName ./input/100sp_habitat.txt
+speciesParamsFile ./cfg/params_100sp_tradeoff.csv
+outputFieldFile NULL
+simReportFile ./out/100sp_report_tradeoff_1.txt
+saveResumeFieldFile ./out/100_species_tradeoff_resume_1.txt
+outputCensusFile ./out/100_species_tradeoff_census_1.txt
+readResumeFieldFile NULL
+outputImageFile NULL
+colorMapFile NULL
+
+

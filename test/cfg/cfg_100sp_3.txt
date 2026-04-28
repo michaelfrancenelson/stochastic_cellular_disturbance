@@ -8,10 +8,10 @@ censusInterval 100
 fieldFileName ./input/100sp_field.txt 
 habitatFileName ./input/100sp_habitat.txt
 speciesParamsFile ./cfg/params_100sp_1.csv
+outputFieldFile NULL
 simReportFile ./out/100sp_report3.txt
 saveResumeFieldFile ./out/100_species_resume3.txt
 outputCensusFile ./out/100_species_census3.txt
-outputFieldFile NULL
 readResumeFieldFile NULL
 outputImageFile NULL
 colorMapFile NULL

@@ -9,7 +9,7 @@ fieldFileName ./input/100sp_field.txt
 habitatFileName ./input/100sp_habitat.txt
 speciesParamsFile ./cfg/params_100sp_1.csv
 outputFieldFile NULL
-simReportFile ./out/100sp_report2.txt
+simReportFile ./out/100sp_report2b.txt
 saveResumeFieldFile ./out/100_species_resume2.txt
 outputCensusFile ./out/100_species_census2.txt
 readResumeFieldFile NULL

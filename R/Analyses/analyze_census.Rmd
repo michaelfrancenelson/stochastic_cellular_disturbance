@@ -77,6 +77,15 @@ dat_100sp_2 = read_census(here("test", "out", "100_species_census2.txt"))
 dat_100sp_3 = read_census(here("test", "out", "100_species_census3.txt"))
 dat_100sp_4 = read_census(here("test", "out", "100_species_census4.txt"))
 
+dat_100sp_tradeoff_0 = read_census(here("test", "out", "100_species_tradeoff_census_0.txt"))
+dat_100sp_tradeoff_1 = read_census(here("test", "out", "100_species_tradeoff_census_1.txt"))
+dat_100sp_tradeoff_2 = read_census(here("test", "out", "100_species_tradeoff_census_2.txt"))
+dat_100sp_tradeoff_3 = read_census(here("test", "out", "100_species_tradeoff_census_3.txt"))
+dat_100sp_tradeoff_4 = read_census(here("test", "out", "100_species_tradeoff_census_4.txt"))
+
+
+
+
 ggplot() +
   geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_0) +
   geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_1, col = 2) +
@@ -84,14 +93,34 @@ ggplot() +
   geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_3, col = 4) +
   geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_4, col = 5)
 
+ggplot() +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_tradeoff_0) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_tradeoff_1, col = 2) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_tradeoff_2, col = 3) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_tradeoff_3, col = 4)
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_tradeoff_4)
+
 
 ggplot() +
   geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_0) +
   geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_1, col = 2) +
-  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_2, col = 3) +
-  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_3, col = 4) +
-  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_100sp_4, col = 5)
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_2, col = 3) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_3, col = 4) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_4, col = 5)
 
+ggplot() +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_tradeoff_0) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_tradeoff_1, col = 2) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_tradeoff_2, col = 3) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_tradeoff_3, col = 4)
+  geom_line(aes(x = step, y = prop_shannon), data = dat_100sp_tradeoff_4, col = 5)
+
+
+head(dat_100sp_0)
+head(dat_100sp_1)
+head(dat_100sp_2)
+head(dat_100sp_3)
+head(dat_100sp_4)
 
 tail(dat_100sp_0)
 tail(dat_100sp_1)
@@ -119,11 +148,48 @@ ggplot() +
 
 
 
+### 5k species
+
+
+```{r}
+dat_5k_tradeoff_0 = read_census(here("test", "out", "5k_species_tradeoff_census_0.txt"))
+dat_5k_tradeoff_0.1 = read_census(here("test", "out", "5k_species_tradeoff_census_0.1.txt"))
+dat_5k_tradeoff_1 = read_census(here("test", "out", "5k_species_tradeoff_census_1.txt"))
+dat_5k_tradeoff_5 = read_census(here("test", "out", "5k_species_tradeoff_census_5.txt"))
+
+
+
+
+ggplot() +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_5k_tradeoff_0) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_5k_tradeoff_0.1, col = 2) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_5k_tradeoff_1, col = 3) +
+  geom_line(aes(x = step, y = log(n_extant + 1)), data = dat_5k_tradeoff_5, col = 4)
+
+
+ggplot() +s
+  geom_line(aes(x = step, y = prop_shannon), data = dat_5k_tradeoff_0) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_5k_tradeoff_0.1, col = 2) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_5k_tradeoff_1, col = 3) +
+  geom_line(aes(x = step, y = prop_shannon), data = dat_5k_tradeoff_5, col = 4)
+
+
+tail(dat_5k_tradeoff_5$n_extant)
+
+
+
+```
+
+
+
+
+
 ```{r}
 dat_5k1 = fread(here("model_runs", "out", "5k_species_census1.csv"), header = T)
 dat_5k2 = fread(here("model_runs", "out", "5k_species_census2.csv"), header = T)
 dat_5k3a = fread(here("model_runs", "out", "5k_species_census3a.csv"), header = T)
 dat_5k3b = fread(here("model_runs", "out", "5k_species_census3b.csv"), header = T)
+
 
 
 
@@ -153,3 +219,49 @@ dat_5k3a[, tail(n_extant)]
 dat_5k3b[, tail(n_extant)]
 
 ```
+
+
+## New model
+
+```{r}
+dat_5k_rad_2_pct_0.5 = read_census(here("model_runs", "out", "5k_species_tradeoff_radius_2_pct_0.5_census.txt"))
+dat_5k_rad_2_pct_1 = read_census(here("model_runs", "out", "5k_species_tradeoff_radius_2_pct_1_census.txt"))
+dat_5k_rad_2_pct_5 = read_census(here("model_runs", "out", "5k_species_tradeoff_radius_2_pct_5_census.txt"))
+
+species_5k_tradeoff = fread(here("model_runs", "cfg", "params_5k_sp_tradeoff.csv"))
+
+
+ggplot(dat_5k_rad_2_pct_0.5) +
+  geom_line(aes(x = step, y = log(n_extant + 1, 10))) +
+  geom_line(aes(x = step, y = log(n_extant + 1, 10)), data = dat_5k_rad_2_pct_1, col = 2) +
+  geom_line(aes(x = step, y = log(n_extant + 1, 10)), data = dat_5k_rad_2_pct_5, col = 3)
+
+
+dat_5k_rad_2_pct_0.5$n_extant
+dat_5k_rad_2_pct_1$n_extant
+dat_5k_rad_2_pct_5$n_extant
+
+plot(displace_prob ~ colonize_prob, data = species_5k_tradeoff[which(tail(dat_5k_rad_2_pct_5, 1)[, 1:5000] > 0), ][-1, ])
+
+get_counts = function(dat, dat_sp, n_species)
+{
+  # non-zero indices
+  indices = which(tail(dat, 1)[, 1:n_species] > 0)[-1]
+  return(data.frame(
+    index = indices,
+    counts = c(unlist(tail(dat, 1)[, indices, with = F])),
+    displace = dat_sp$displace_prob[indices],
+    colonize = dat_sp$colonize_prob[indices]
+  ))
+}
+
+
+plot(
+  displace ~ colonize,
+  cex = log(counts),
+  data = get_counts(dat_5k_rad_2_pct_0.5, species_5k_tradeoff, 5000)
+)
+
+
+```
+
